@@ -15,8 +15,36 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
 
-    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool
+    {
         // Override point for customization after application launch.
+        
+        //reset initial array by deleting all previous entry
+        let fr = NSFetchRequest<Garment>(entityName: DATA_ENTITY_NAME_GARMENT)
+        do
+        {
+            //
+            let retArray = try persistentContainer.viewContext.fetch(fr)
+
+            for item in retArray
+            {
+                persistentContainer.viewContext.delete(item)
+
+                saveContext()
+            }
+        }
+        catch
+        {
+            print(error.localizedDescription)
+        }
+//
+        insertGarment(name: "Dress", date: Date())
+        insertGarment(name: "Pant", date: Date())
+        insertGarment(name: "Shirt", date: Date())
+        insertGarment(name: "TShirt", date: Date())
+        
+        
+        
         return true
     }
 
@@ -45,37 +73,28 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     // MARK: - Core Data stack
+    // Both basic and custom functions of CoreData usages are written below
+    // Marked for Refactor into ServiceManager later if needed
 
     lazy var persistentContainer: NSPersistentContainer = {
-        /*
-         The persistent container for the application. This implementation
-         creates and returns a container, having loaded the store for the
-         application to it. This property is optional since there are legitimate
-         error conditions that could cause the creation of the store to fail.
-        */
+
         let container = NSPersistentContainer(name: "Lululemon")
         container.loadPersistentStores(completionHandler: { (storeDescription, error) in
             if let error = error as NSError? {
-                // Replace this implementation with code to handle the error appropriately.
-                // fatalError() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development.
-                 
-                /*
-                 Typical reasons for an error here include:
-                 * The parent directory does not exist, cannot be created, or disallows writing.
-                 * The persistent store is not accessible, due to permissions or data protection when the device is locked.
-                 * The device is out of space.
-                 * The store could not be migrated to the current model version.
-                 Check the error message to determine what the actual problem was.
-                 */
+
                 fatalError("Unresolved error \(error), \(error.userInfo)")
             }
         })
         return container
     }()
 
+    
+    
+    
     // MARK: - Core Data Saving support
 
-    func saveContext () {
+    func saveContext ()
+    {
         let context = persistentContainer.viewContext
         if context.hasChanges {
             do {
@@ -86,6 +105,72 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 let nserror = error as NSError
                 fatalError("Unresolved error \(nserror), \(nserror.userInfo)")
             }
+        }
+    }
+    
+    
+    func insertGarment(name: String, date: Date)
+    {
+        //check for existing item to avoid duplicate
+        //need an Error or Boolean return type to signal an insertion error (duplicate)
+        if !checkExistGarment(name: name)
+        {
+            let newGarment = Garment(context: persistentContainer.viewContext)
+        
+            newGarment.name = name
+            newGarment.timestamp = date
+        
+            saveContext()
+        }
+    }
+    
+    
+    func fetchAllGarments() -> [Garment]
+    {
+        let request = NSFetchRequest<Garment>(entityName: DATA_ENTITY_NAME_GARMENT)
+        
+        //sorting can be done at CoreData layer using the code below
+        //however in this case can also be done at controller layer since the sorting targets are all Swift data types (String and Date), through sort(by:) with a custom comparator
+        
+        //let sort = NSSortDescriptor(key: sortedBy, ascending: true)
+        //request.sortDescriptors = [sort]
+        
+        var retArray : [Garment] = []
+        
+        do
+        {
+            retArray = try persistentContainer.viewContext.fetch(request)
+        }
+        catch
+        {
+            print(error.localizedDescription)
+        }
+        
+        return retArray
+    }
+    
+    func checkExistGarment(name: String) -> Bool
+    {
+        let request = NSFetchRequest<Garment>(entityName: DATA_ENTITY_NAME_GARMENT)
+        request.predicate = NSPredicate(format: "name = %@", name)
+        
+        do
+        {
+            let retArray = try persistentContainer.viewContext.fetch(request)
+            
+            if retArray.count == 0
+            {
+                return false
+            }
+            else
+            {
+                return true
+            }
+        }
+        catch
+        {
+            print(error.localizedDescription)
+            return false
         }
     }
 
